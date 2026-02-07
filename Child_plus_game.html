@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>怪物算術大冒險</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            touch-action: manipulation;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.1s ease-out; 
+        }
+        canvas {
+            background: linear-gradient(to bottom, #1e1b4b, #1e293b);
+            display: block;
+            border-bottom: 3px solid #6366f1;
+            width: 100%;
+            height: 80vh; 
+            transition: border-color 0.3s, border-width 0.3s;
+        }
+        .canvas-dead {
+            border-bottom: 12px solid #ef4444 !important;
+            box-shadow: 0 0 20px #ef4444;
+        }
+        .ui-panel {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            padding: 0 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .menu-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        @media (max-width: 640px) {
+            .menu-overlay {
+                padding: 15px;
+                justify-content: flex-start;
+                padding-top: 30px;
+            }
+        }
+        .btn {
+            transition: transform 0.1s, background-color 0.2s;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .btn:active {
+            transform: scale(0.9);
+        }
+        .mode-btn.selected {
+            background-color: #eab308;
+            color: black;
+            font-weight: bold;
+        }
+        .option-btn {
+            height: 50px;
+            font-size: 1.25rem; 
+            font-weight: 700;
+        }
+        @media (max-width: 640px) {
+            .option-btn {
+                height: 45px;
+                font-size: 1rem;
+            }
+        }
+        #controls-container {
+            flex: 0;
+            width: 100%;
+            background-color: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            min-height: auto;
+        }
+        #controls {
+            width: 100%;
+            max-width: min(90vw, 500px);
+        }
+        .back-btn, .test-trigger-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: white;
+            touch-action: manipulation;
+        }
+        @media (max-width: 640px) {
+            .back-btn, .test-trigger-btn {
+                font-size: 11px;
+                padding: 3px 8px;
+            }
+        }
+        .bomb-btn {
+            background: rgba(239, 68, 68, 0.15);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            padding: 8px 16px;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            touch-action: manipulation;
+        }
+        @media (max-width: 640px) {
+            .bomb-btn {
+                font-size: 14px;
+                padding: 6px 12px;
+                gap: 4px;
+            }
+        }
+        .bomb-btn:active {
+            background: rgba(239, 68, 68, 0.4);
+        }
+        .speed-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            touch-action: manipulation;
+        }
+        @media (max-width: 640px) {
+            .speed-btn {
+                font-size: 12px;
+                padding: 4px 10px;
+            }
+        }
+        .speed-btn.active {
+            background: rgba(234, 179, 8, 0.8);
+            color: #000;
+            border-color: #facc15;
+        }
+        .bottom-ui {
+            position: absolute;
+            bottom: 26vh;
+            width: 100%;
+            padding: 0 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .popover-menu {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 12px;
+            padding: 8px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            margin-bottom: 8px;
+        }
+        .popover-item {
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .popover-item:hover {
+            background: #334155;
+        }
+        @keyframes fadeUp {
+            0% { opacity: 0; transform: translate(-50%, 0); }
+            20% { opacity: 0.7; transform: translate(-50%, -20px); }
+            80% { opacity: 0.7; transform: translate(-50%, -40px); }
+            100% { opacity: 0; transform: translate(-50%, -60px); }
+        }
+        .stage-msg {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 2rem;
+            font-weight: 900;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 50;
+            animation: fadeUp 2.5s forwards;
+        }
+        .reward-msg {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #4ade80;
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 15px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 55;
+            animation: rewardFade 2s forwards;
+        }
+        @keyframes rewardFade {
+            0% { opacity: 0; transform: translate(-50%, 20px); }
+            20% { opacity: 1; transform: translate(-50%, 0); }
+            80% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+        .boss-win-msg {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #facc15;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(234,179,8,0.5);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 60;
+            animation: bossWinAnim 3s forwards;
+        }
+        @keyframes bossWinAnim {
+            0% { opacity: 0; transform: translate(-50%, -20%) scale(0.5); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            20% { transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); }
+        }
+        #danger-text, #boss-warning-text {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff4444;
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+            white-space: nowrap;
+        }
+        @keyframes bombFlash {
+            0% { background: rgba(255, 100, 0, 0.8); }
+            50% { background: rgba(255, 200, 0, 0.6); }
+            100% { background: rgba(255, 100, 0, 0); }
+        }
+        .bomb-effect {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 200;
+            animation: bombFlash 1.5s forwards;
+        }
+        .bomb-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffff00;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 30px rgba(255,0,0,0.8), 0 0 15px rgba(255,200,0,0.6);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 210;
+            animation: bombMsgAnim 1.5s forwards;
+        }
+        @keyframes bombMsgAnim {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        }
+        /* 響應式設計 */
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 2rem !important;
+            }
+            #menu {
+                padding-top: 40px !important;
+            }
+            .mode-btn {
+                font-size: 0.75rem !important;
+                padding: 0.4rem 0.8rem !important;
+            }
+            .btn.bg-emerald-500,
+            .btn.bg-sky-500,
+            .btn.bg-rose-500 {
+                font-size: 0.9rem !important;
+                padding: 0.6rem !important;
+            }
+            .text-indigo-300 {
+                font-size: 0.75rem !important;
+            }
+            .text-slate-400 {
+                font-size: 0.7rem !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="danger-text">趕快! 怪物快要咬到你了</div>
+    <div id="boss-warning-text">警告，魔王接近中!!</div>
+    
+    <div class="ui-panel">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+                <button onclick="backToMenu()" id="ingame-back-btn" class="back-btn btn hidden">↩ 返回</button>
+                <div class="bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm">
+                    <span class="text-indigo-300 text-xs font-bold">得分:</span> <span id="score-display" class="text-lg ml-1 font-mono">0</span>
+                </div>
+            </div>
+            <button onclick="useBomb()" id="bomb-btn" class="bomb-btn btn hidden">💣 炸彈 x<span id="bomb-count">0</span></button>
+        </div>
+        
+        <div class="flex flex-col items-end gap-2">
+            <div class="bg-black/40 px-3 py-1 rounded-full border border-white/10 backdrop-blur-sm">
+                <span id="hp-display" class="text-lg">❤️❤️❤️</span>
+            </div>
+            <button onclick="toggleSpeed()" id="speed-btn" class="speed-btn btn hidden">⚡ 加速</button>
+        </div>
+    </div>
+
+    <div class="bottom-ui">
+        <div id="test-ui-group" class="hidden flex flex-col items-start">
+            <div id="test-menu" class="popover-menu">
+                <button class="popover-item btn" onclick="devAction('score')">加 100 分</button>
+                <button class="popover-item btn" onclick="devAction('stage')">跳轉下一階段</button>
+                <button class="popover-item btn" onclick="devAction('boss')">強制進入 BOSS</button>
+                <button class="popover-item btn" onclick="devAction('hp')">增加生命值</button>
+                <button class="popover-item btn" onclick="devAction('bomb')">增加炸彈</button>
+                <button class="popover-item btn" onclick="clearTopScores()">清除排行榜</button>
+            </div>
+            <button id="test-btn" class="test-trigger-btn btn" onclick="handleTestClick()">🛠️ 測試</button>
+        </div>
+
+        <div id="speed-gear-group" class="hidden flex flex-col items-end">
+            <div id="gear-menu" class="popover-menu">
+                <button class="popover-item btn" onclick="setGear(2)">2 倍</button>
+                <button class="popover-item btn" onclick="setGear(4)">4 倍</button>
+                <button class="popover-item btn" onclick="setGear(8)">8 倍</button>
+                <button class="popover-item btn" onclick="setGear(16)">16 倍</button>
+                <button class="popover-item btn" onclick="setGear(32)">32 倍</button>
+            </div>
+            <div class="flex items-center gap-2 pointer-events-auto">
+                <span id="gear-status" class="text-xs font-bold text-yellow-400 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">檔位: 3x</span>
+                <button class="speed-btn btn" onclick="toggleGearMenu()">⚙️ 加速度排檔</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <div id="stage-msg-container"></div>
+
+    <div id="controls-container">
+        <div id="controls" class="grid grid-cols-4 gap-3 w-full max-w-lg"></div>
+    </div>
+
+    <div id="menu" class="menu-overlay">
+        <h1 class="text-4xl font-black mb-2 text-yellow-400">怪物算術大冒險</h1>
+
+        <div class="mb-6">
+            <p class="text-slate-400 text-xs mb-2">模式選擇</p>
+            <div class="flex gap-2">
+                <button id="mode-add" onclick="setMode('add')" class="mode-btn btn selected bg-slate-700 px-6 py-2 rounded-lg text-sm">加法 (+)</button>
+                <button id="mode-sub" onclick="setMode('sub')" class="mode-btn btn bg-slate-700 px-6 py-2 rounded-lg text-sm">減法 (−)</button>
+            </div>
+        </div>
+
+        <div class="text-slate-500 text-sm mb-6">✦ ✦ ✦</div>
+        
+        <div class="flex flex-col gap-2 w-64 mb-6">
+            <button onclick="startGame('easy')" class="btn bg-emerald-500 py-3 rounded-xl font-bold shadow-lg">簡單模式 (1-10)</button>
+            <button onclick="startGame('medium')" class="btn bg-sky-500 py-3 rounded-xl font-bold shadow-lg">普通模式 (1-50)</button>
+            <button onclick="startGame('hard')" class="btn bg-rose-500 py-3 rounded-xl font-bold shadow-lg">困難模式 (1-100)</button>
+        </div>
+
+        <div id="last-score-container" class="mb-2 hidden">
+            <p class="text-indigo-300 text-sm">目前最高分：<span id="last-score-val" class="font-bold text-xl text-white">0</span></p>
+        </div>
+
+        <div id="top-scores-container" class="mb-6 hidden max-w-xs sm:w-64 text-left">
+            <p class="text-slate-400 text-xs mb-2">排行榜</p>
+            <div id="top3-summary" class="text-white text-sm mb-3">
+                <div id="top3-items"></div>
+            </div>
+            <button onclick="toggleTopScoresMenu()" class="btn bg-slate-600 text-white py-2 rounded-lg w-full mb-2">查看前20名 ▼</button>
+            <div id="topscores-menu" class="popover-menu bg-slate-700 border-slate-600" style="display: none; width: 100%; position: static; margin-bottom: 0; box-shadow: none;">
+                <ol id="top-scores-list" class="text-white text-sm px-2 py-2 max-h-60 overflow-auto"></ol>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over" class="menu-overlay hidden">
+        <div class="bg-slate-800 p-10 rounded-3xl border border-indigo-500 shadow-2xl">
+            <h2 class="text-3xl font-black text-white mb-2 italic">挑戰結束</h2>
+            <p class="text-lg mb-2 text-slate-400">最終得分：<span id="final-score" class="text-yellow-400 font-bold text-3xl">0</span></p>
+            <p id="rank-display" class="text-lg mb-8 text-green-400 font-bold italic"></p>
+            <button onclick="backToMenu()" class="btn bg-indigo-500 text-white px-12 py-3 rounded-full font-bold shadow-lg">回到主選單</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameContainer = document.getElementById('game-container');
+    const scoreDisplay = document.getElementById('score-display');
+    const hpDisplay = document.getElementById('hp-display');
+    const bombCountDisplay = document.getElementById('bomb-count');
+    const menu = document.getElementById('menu');
+    const gameOverScreen = document.getElementById('game-over');
+    const controls = document.getElementById('controls');
+    const backBtn = document.getElementById('ingame-back-btn');
+    const speedBtn = document.getElementById('speed-btn');
+    const bombBtn = document.getElementById('bomb-btn');
+    const testUi = document.getElementById('test-ui-group');
+    const gearUi = document.getElementById('speed-gear-group');
+    const gearStatus = document.getElementById('gear-status');
+    const stageMsgContainer = document.getElementById('stage-msg-container');
+    const dangerText = document.getElementById('danger-text');
+    const bossWarningText = document.getElementById('boss-warning-text');
+
+    let gameActive = false;
+    let score = 0;
+    let hp = 3;
+    let bombs = 0;
+    let difficulty = 'easy';
+    let gameMode = 'add'; 
+    let monsters = [];
+    let particles = [];
+    let currentProblem = null;
+    let lastTime = 0;
+    let spawnTimer = 0;
+    let spawnInterval = 4000; 
+    let animationFrameId = null;
+    let arrowBounce = 0;
+    let lastStageMilestone = 0;
+    let lastBombMilestone = 0; 
+    let nextBossScore = 500;
+    const TOP_SCORES_KEY = 'child_plus_topscores';
+    let topScores = []; // descending array of numbers, length <= 10
+    
+    let isSpeedUp = false;
+    let currentGear = 3; 
+    let isBossWarning = false;
+    let isBossActive = false;
+    let isEnding = false;
+    let shakeStartTime = 0;
+    let bombEffectStartTime = 0;
+
+    let bossAttackState = 'IDLE'; 
+    let bossAttackTimer = 0;
+
+    let testClicks = 0;
+    let testClickTimer = null;
+    let wrongAnswerCount = 0;
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight * 0.75;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    loadTopScores();
+
+    function handleTestClick() {
+        testClicks++;
+        clearTimeout(testClickTimer);
+        testClickTimer = setTimeout(() => { testClicks = 0; }, 1000);
+        if (testClicks >= 5) {
+            const m = document.getElementById('test-menu');
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+            testClicks = 0;
+        }
+    }
+
+    function loadTopScores() {
+        try {
+            const s = localStorage.getItem(TOP_SCORES_KEY);
+            topScores = s ? JSON.parse(s) : [];
+            if (!Array.isArray(topScores)) topScores = [];
+            // Ensure all items are valid objects with name and score
+            topScores = topScores.filter(item => item && typeof item.score === 'number');
+        } catch (e) {
+            topScores = [];
+        }
+        updateTopScoresUI();
+    }
+
+    function saveTopScores() {
+        try { localStorage.setItem(TOP_SCORES_KEY, JSON.stringify(topScores)); } catch (e) {}
+    }
+
+    function updateTopScoresUI() {
+        const lastContainer = document.getElementById('last-score-container');
+        const lastVal = document.getElementById('last-score-val');
+        const summaryContainer = document.getElementById('top3-summary');
+        const listContainer = document.getElementById('top-scores-container');
+        const listEl = document.getElementById('top-scores-list');
+        
+        if (topScores.length > 0) {
+            if (lastContainer && lastVal) { 
+                lastContainer.classList.remove('hidden'); 
+                lastVal.innerText = topScores[0].score; 
+            }
+            if (listContainer) listContainer.classList.remove('hidden');
+            
+            // 前三名簡要顯示
+            if (summaryContainer) {
+                summaryContainer.innerHTML = '';
+                topScores.slice(0, 3).forEach((item, i) => {
+                    const medals = ['🥇', '🥈', '🥉'];
+                    const div = document.createElement('div');
+                    div.className = 'py-1';
+                    div.innerText = `${medals[i]} ${item.name || '玩家'} - ${item.score}`;
+                    summaryContainer.appendChild(div);
+                });
+            }
+            
+            // 前20名列表
+            if (listEl) {
+                listEl.innerHTML = '';
+                topScores.slice(0, 20).forEach((item, i) => {
+                    const li = document.createElement('li');
+                    li.className = 'text-white text-base py-1';
+                    li.innerText = `${i+1}. ${item.name || '玩家'} - ${item.score}`;
+                    listEl.appendChild(li);
+                });
+            }
+        } else {
+            if (lastContainer) lastContainer.classList.add('hidden');
+            if (listContainer) listContainer.classList.add('hidden');
+        }
+    }
+
+    function toggleTopScoresMenu() {
+        const menu = document.getElementById('topscores-menu');
+        menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function clearTopScores() {
+        topScores = [];
+        saveTopScores();
+        updateTopScoresUI();
+    }
+
+    function getRankText(finalScore) {
+        const idx = topScores.findIndex(item => item.score === finalScore);
+        if (idx !== -1) {
+            const rank = idx + 1;
+            if (rank === 1) return `🏆 恭喜！你是新的冠軍！`;
+            if (rank <= 3) return `🥇 太棒了！你進入前三名（第 ${rank} 名）！`;
+            if (rank <= 20) return `👍 很好！你進入了排行榜（第 ${rank} 名）！`;
+        }
+        return '';
+    }
+
+    function showNewHigh(rank) {
+        const div = document.createElement('div');
+        div.className = 'reward-msg';
+        div.style.top = '35%';
+        div.innerText = `新的排行榜！你獲得第 ${rank} 名！`;
+        stageMsgContainer.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+    }
+
+    function toggleGearMenu() {
+        const m = document.getElementById('gear-menu');
+        m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function setGear(val) {
+        currentGear = val;
+        gearStatus.innerText = `檔位: ${val}x`;
+        document.getElementById('gear-menu').style.display = 'none';
+    }
+
+    function devAction(type) {
+        if (type === 'score') {
+            score += 100; checkMilestones();
+        } else if (type === 'stage') {
+            score = (Math.floor(score / 200) + 1) * 200;
+            lastStageMilestone = score;
+            triggerStageUp();
+            checkMilestones();
+        } else if (type === 'boss') {
+            triggerBossWarning();
+        } else if (type === 'hp') {
+            hp++;
+        } else if (type === 'bomb') {
+            bombs++;
+        }
+        updateUI();
+        document.getElementById('test-menu').style.display = 'none';
+    }
+
+    function setMode(mode) {
+        gameMode = mode;
+        document.getElementById('mode-add').classList.toggle('selected', mode === 'add');
+        document.getElementById('mode-sub').classList.toggle('selected', mode === 'sub');
+    }
+
+    function toggleSpeed() {
+        isSpeedUp = !isSpeedUp;
+        speedBtn.innerText = isSpeedUp ? `⚡ 加速中` : "⚡ 加速";
+        speedBtn.classList.toggle('active', isSpeedUp);
+    }
+
+    function useBomb() {
+        if (bombs <= 0 || !gameActive || isBossWarning) return;
+        bombs--;
+        updateUI();
+        
+        // 清除所有一般怪物，保留 Boss
+        monsters.forEach(m => {
+            if (!m.isBoss) {
+                for (let i = 0; i < 40; i++) particles.push(new Particle(m.x, m.y));
+            }
+        });
+        monsters = monsters.filter(m => m.isBoss);
+        
+        // 顯示炸彈特效
+        bombEffectStartTime = performance.now();
+        showBombEffect();
+        
+        if (monsters.length === 0) {
+            currentProblem = null;
+            controls.innerHTML = '';
+        } else if (!monsters.includes(currentProblem)) {
+            updateOptions(monsters[0]);
+        }
+    }
+
+    function showBombEffect() {
+        // 全屏閃爍特效
+        const bombLayer = document.createElement('div');
+        bombLayer.className = 'bomb-effect';
+        gameContainer.appendChild(bombLayer);
+        
+        // 炸彈文字提示
+        const bombMsg = document.createElement('div');
+        bombMsg.className = 'bomb-message';
+        bombMsg.innerText = '使用了炸彈，全部怪物都被清除了';
+        gameContainer.appendChild(bombMsg);
+        
+        // 1.5秒後移除
+        setTimeout(() => {
+            bombLayer.remove();
+            bombMsg.remove();
+        }, 1500);
+    }
+
+    class Particle {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 8 + 2;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.life = 1.0;
+            this.size = Math.random() * 6 + 2;
+        }
+        update() { this.x += this.vx; this.y += this.vy; this.life -= 0.02; }
+        draw() {
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.life})`;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+
+    class Monster {
+        constructor(n1, n2, type, baseSpeed, isBoss = false) {
+            this.n1 = n1; this.n2 = n2;
+            this.type = type === '+' ? '+' : '−';
+            this.answer = type === '+' ? (n1 + n2) : (n1 - n2);
+            this.isBoss = isBoss;
+            this.hp = isBoss ? 10 : 1; 
+            this.baseSpeed = baseSpeed * 0.35; 
+            const baseSize = Math.min(canvas.width, canvas.height) * 0.14;
+            this.radius = isBoss ? baseSize * 1.5 : baseSize; 
+            this.x = isBoss ? canvas.width / 2 : (Math.random() * (canvas.width - this.radius * 2) + this.radius);
+            this.y = -this.radius;
+            this.color = isBoss ? '#ef4444' : `hsl(${Math.random() * 360}, 75%, 55%)`;
+            this.wobble = 0;
+            this.smashOffset = 0;
+            this.armWobble = 0;
+        }
+        update(deltaTime) {
+            if (isEnding) return;
+            let speedFactor = 1;
+            if (this.isBoss) {
+                const threshold = canvas.height * (5/6);
+                speedFactor = (this.y < threshold) ? 1.5 : 0.5;
+            }
+            const activeGear = isSpeedUp ? currentGear * 1.5 : currentGear;
+            const currentSpeed = (isSpeedUp ? this.baseSpeed * activeGear : this.baseSpeed) * speedFactor;
+            const stopLine = canvas.height - this.radius;
+            if (this.isBoss && this.y >= stopLine) {
+                this.y = stopLine;
+                this.armWobble += 0.1;
+                if (bossAttackState === 'PREPARING') {
+                    if (bossAttackTimer < 800) { this.smashOffset = -(bossAttackTimer / 800) * 40; }
+                    else if (bossAttackTimer < 950) { 
+                        const snapBackTime = bossAttackTimer - 800;
+                        this.smashOffset = -40 + (snapBackTime / 150) * 40;
+                    } else { this.smashOffset = 0; }
+                } else { this.smashOffset = 0; }
+            } else { this.y += currentSpeed * (deltaTime / 16); }
+            if (!this.isBoss) { this.wobble += 0.05; this.x += Math.sin(this.wobble) * 0.4; }
+        }
+        draw(isTarget) {
+            ctx.save();
+            ctx.translate(this.x, this.y + (this.isBoss ? this.smashOffset : 0));
+            if (this.isBoss) { this.drawArms(); }
+            ctx.beginPath(); 
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2); 
+            ctx.fillStyle = this.color; 
+            ctx.fill();
+            if (isTarget) { ctx.strokeStyle = '#fde047'; ctx.lineWidth = this.isBoss ? 10 : 6; ctx.stroke(); }
+            ctx.fillStyle = 'white';
+            const eyeSize = this.isBoss ? 0.25 : 0.2;
+            ctx.beginPath(); 
+            ctx.arc(-this.radius*0.3, -this.radius*0.1, this.radius*eyeSize, 0, Math.PI * 2);
+            ctx.arc(this.radius*0.3, -this.radius*0.1, this.radius*eyeSize, 0, Math.PI * 2); 
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(-this.radius*0.3, -this.radius*0.1, this.radius*eyeSize*0.5, 0, Math.PI * 2);
+            ctx.arc(this.radius*0.3, -this.radius*0.1, this.radius*eyeSize*0.5, 0, Math.PI * 2); 
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            const fontSize = Math.floor(this.radius * (this.isBoss ? 0.6 : 0.8)); 
+            ctx.font = `900 ${fontSize}px "Arial Black", sans-serif`; 
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.strokeStyle = 'black'; ctx.lineWidth = 5;
+            ctx.strokeText(`${this.n1}${this.type}${this.n2}`, 0, this.radius * 0.4);
+            ctx.fillText(`${this.n1}${this.type}${this.n2}`, 0, this.radius * 0.4);
+            if (this.isBoss) {
+                const barW = this.radius * 1.5; 
+                ctx.fillStyle = '#333'; ctx.fillRect(-barW/2, -this.radius - 30, barW, 10);
+                ctx.fillStyle = '#4ade80'; ctx.fillRect(-barW/2, -this.radius - 30, barW * (this.hp / 10), 10);
+            }
+            if (isTarget) this.drawArrow();
+            ctx.restore();
+        }
+        drawArms() {
+            ctx.fillStyle = this.color;
+            const armLen = this.radius * 0.8;
+            const armWidth = this.radius * 0.4;
+            const wobbleL = Math.sin(this.armWobble) * 15;
+            const wobbleR = Math.cos(this.armWobble) * 15;
+            ctx.save(); ctx.translate(-this.radius * 0.8, 0); ctx.rotate(Math.PI / 6 + wobbleL * Math.PI / 180);
+            this.drawRoundedRect(-armLen, -armWidth/2, armLen, armWidth, 15); ctx.restore();
+            ctx.save(); ctx.translate(this.radius * 0.8, 0); ctx.rotate(-Math.PI / 6 + wobbleR * Math.PI / 180);
+            this.drawRoundedRect(0, -armWidth/2, armLen, armWidth, 15); ctx.restore();
+        }
+        drawRoundedRect(x, y, w, h, r) {
+            ctx.beginPath(); ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath(); ctx.fill();
+        }
+        drawArrow() {
+            const bounce = Math.sin(arrowBounce) * 10; 
+            const arrowY = this.radius + 20 + bounce;
+            ctx.fillStyle = '#fde047'; ctx.shadowBlur = 10; ctx.shadowColor = 'black';
+            ctx.beginPath(); ctx.moveTo(0, arrowY); ctx.lineTo(-15, arrowY + 20); ctx.lineTo(15, arrowY + 20); ctx.closePath();
+            ctx.fill(); ctx.fillRect(-6, arrowY + 20, 12, 15); ctx.shadowBlur = 0;
+        }
+    }
+
+    function resetAllData() {
+        score = 0; hp = 3; bombs = 0;
+        monsters = []; particles = []; currentProblem = null;
+        spawnTimer = 0; lastTime = performance.now(); lastStageMilestone = 0; lastBombMilestone = 0; nextBossScore = 500;
+        isSpeedUp = false; currentGear = 3; isBossWarning = false; isBossActive = false; isEnding = false;
+        wrongAnswerCount = 0;
+        bossAttackState = 'IDLE'; bossAttackTimer = 0;
+        gearStatus.innerText = "檔位: 3x";
+        speedBtn.innerText = "⚡ 加速"; speedBtn.classList.remove('active');
+        dangerText.style.display = 'none'; bossWarningText.style.display = 'none';
+        canvas.classList.remove('canvas-dead');
+        gameContainer.style.transform = 'translateY(0)';
+        document.getElementById('test-menu').style.display = 'none';
+        document.getElementById('gear-menu').style.display = 'none';
+        if (difficulty === 'easy') spawnInterval = 4000;
+        else if (difficulty === 'medium') spawnInterval = 3333;
+        else spawnInterval = 2666;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        controls.innerHTML = ''; stageMsgContainer.innerHTML = '';
+        updateUI();
+    }
+
+    function startGame(diff) {
+        difficulty = diff;
+        menu.classList.add('hidden'); gameOverScreen.classList.add('hidden');
+        backBtn.classList.remove('hidden'); speedBtn.classList.remove('hidden'); bombBtn.classList.remove('hidden');
+        testUi.classList.remove('hidden'); gearUi.classList.remove('hidden');
+        resetAllData();
+        gameActive = true;
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(gameLoop);
+        generateNewProblem();
+    }
+
+    function backToMenu() {
+        gameActive = false; cancelAnimationFrame(animationFrameId);
+        gameOverScreen.classList.add('hidden'); backBtn.classList.add('hidden');
+        speedBtn.classList.add('hidden'); bombBtn.classList.add('hidden');
+        testUi.classList.add('hidden'); gearUi.classList.add('hidden');
+        menu.classList.remove('hidden'); resetAllData();
+    }
+
+    function updateUI() {
+        scoreDisplay.innerText = score;
+        hpDisplay.innerText = '❤️'.repeat(Math.max(0, hp));
+        bombCountDisplay.innerText = bombs;
+    }
+
+    function triggerStageUp() {
+        const div = document.createElement('div');
+        div.className = 'stage-msg';
+        div.innerText = "恭喜你達到下一個階段";
+        stageMsgContainer.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+        spawnInterval = Math.max(800, spawnInterval * 0.85); 
+    }
+
+    function triggerBombReward() {
+        bombs++;
+        updateUI();
+        const div = document.createElement('div');
+        div.className = 'reward-msg';
+        div.innerText = "恭喜打贏10隻怪物，獲得一個炸彈";
+        stageMsgContainer.appendChild(div);
+        setTimeout(() => div.remove(), 2000);
+    }
+
+    function checkMilestones() {
+        if (score > 0 && score >= lastStageMilestone + 200) {
+            lastStageMilestone = Math.floor(score / 200) * 200;
+            triggerStageUp();
+        }
+        if (score > 0 && score >= lastBombMilestone + 100) {
+            lastBombMilestone = Math.floor(score / 100) * 100;
+            triggerBombReward();
+        }
+        if (score >= nextBossScore) {
+            nextBossScore += 500;
+            triggerBossWarning();
+        }
+    }
+
+    function triggerBossWarning() {
+        if (isBossWarning || isBossActive) return;
+        monsters = []; currentProblem = null; controls.innerHTML = '';
+        isBossWarning = true; bossWarningText.style.display = 'block';
+        setTimeout(() => {
+            isBossWarning = false; bossWarningText.style.display = 'none';
+            spawnBoss();
+        }, 2500);
+    }
+
+    function spawnBoss() {
+        isBossActive = true; bossAttackState = 'IDLE';
+        const stageBonus = Math.floor(score / 200) * 0.1;
+        const speed = 0.5 + (score / 1200) + stageBonus;
+        const { n1, n2, type } = getProblemData();
+        const boss = new Monster(n1, n2, type, speed, true);
+        monsters.unshift(boss);
+        updateOptions(boss);
+    }
+
+    function getProblemData() {
+        let maxRange = difficulty === 'hard' ? 100 : (difficulty === 'medium' ? 50 : 10);
+        let n1, n2; const type = gameMode === 'add' ? '+' : '-';
+        if (type === '+') { n1 = Math.floor(Math.random() * maxRange) + 1; n2 = Math.floor(Math.random() * maxRange) + 1; }
+        else { n1 = Math.floor(Math.random() * (maxRange - 1)) + 1; n2 = Math.floor(Math.random() * n1); }
+        return { n1, n2, type };
+    }
+
+    function generateNewProblem() {
+        if (!gameActive || isBossWarning || isBossActive || isEnding) return;
+        const { n1, n2, type } = getProblemData();
+        const stageBonus = Math.floor(score / 200) * 0.1;
+        const speedMultiplier = 0.5 + (score / 1200) + stageBonus;
+        const newMonster = new Monster(n1, n2, type, speedMultiplier);
+        monsters.push(newMonster);
+        if (!currentProblem) updateOptions(newMonster);
+    }
+
+    function updateOptions(target) {
+        currentProblem = target; controls.innerHTML = '';
+        if (!target) return;
+        const correct = target.answer;
+        let options = [correct];
+        while (options.length < 4) {
+            let fake = correct + (Math.floor(Math.random() * 11) - 5);
+            if (fake >= 0 && !options.includes(fake)) options.push(fake);
+            else if (options.length < 4) { let r = Math.floor(Math.random() * 20); if (!options.includes(r)) options.push(r); }
+        }
+        // 按从小到大排序
+        options.sort((a, b) => a - b);
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn btn bg-white text-slate-900 rounded-xl shadow-md border border-slate-300 active:bg-yellow-50';
+            btn.innerText = opt; btn.onclick = (e) => checkAnswer(opt, e.target);
+            controls.appendChild(btn);
+        });
+    }
+
+    function explodeBoss(x, y) { 
+        for (let i = 0; i < 80; i++) particles.push(new Particle(x, y)); 
+        const div = document.createElement('div');
+        div.className = 'boss-win-msg';
+        div.innerText = "太棒了!! 魔王被你打敗了!";
+        stageMsgContainer.appendChild(div);
+        setTimeout(() => div.remove(), 3000);
+    }
+
+    function checkAnswer(val, el) {
+        if (!gameActive || !currentProblem || isEnding) return;
+        if (val === currentProblem.answer) {
+            wrongAnswerCount = 0;
+            if (currentProblem.isBoss) {
+                currentProblem.hp--;
+                if (currentProblem.hp <= 0) {
+                    explodeBoss(currentProblem.x, currentProblem.y);
+                    monsters.splice(monsters.indexOf(currentProblem), 1);
+                    isBossActive = false; hp += 3; bombs += 1;
+                    bossAttackState = 'IDLE';
+                    gameContainer.style.transform = 'translateY(0)';
+                    updateUI();
+                    if (monsters.length > 0) updateOptions(monsters[0]);
+                    else { currentProblem = null; controls.innerHTML = ''; }
+                } else {
+                    const { n1, n2 } = getProblemData();
+                    currentProblem.n1 = n1; currentProblem.n2 = n2;
+                    currentProblem.answer = currentProblem.type === '+' ? (n1 + n2) : (n1 - n2);
+                    updateOptions(currentProblem);
+                }
+            } else {
+                // 一般怪物清除時顯示爆炸特效
+                for (let i = 0; i < 50; i++) particles.push(new Particle(currentProblem.x, currentProblem.y));
+                monsters.splice(monsters.indexOf(currentProblem), 1);
+                score += 10; checkMilestones();
+                if (monsters.length > 0) updateOptions(monsters[0]);
+                else { currentProblem = null; controls.innerHTML = ''; }
+                updateUI();
+            }
+        } else { 
+            wrongAnswerCount++;
+            el.classList.add('bg-red-200', 'border-red-400'); 
+            setTimeout(() => el.classList.remove('bg-red-200', 'border-red-400'), 250);
+            // 答錯超過5次顯示提示
+            if (wrongAnswerCount > 5) {
+                showWrongWarning();
+            }
+        }
+    }
+
+    function showWrongWarning() {
+        const div = document.createElement('div');
+        div.className = 'reward-msg';
+        div.style.color = '#ff6b6b';
+        div.style.top = '20%';
+        div.innerText = '你太誇張了，答案都亂猜!!';
+        stageMsgContainer.appendChild(div);
+        setTimeout(() => div.remove(), 2500);
+    }
+
+    function gameLoop(time) {
+        if (!gameActive) return;
+        const deltaTime = time - lastTime; lastTime = time;
+        arrowBounce += 0.15;
+        if (!isBossWarning && !isBossActive && !isEnding) {
+            const activeGear = isSpeedUp ? currentGear * 1.5 : 1;
+            spawnTimer += deltaTime * activeGear;
+            if (spawnTimer > spawnInterval) { generateNewProblem(); spawnTimer = 0; }
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (isBossWarning) {
+            const warningFlash = (Math.sin(time * Math.PI / 500) + 1) / 2;
+            ctx.fillStyle = `rgba(220, 38, 38, ${warningFlash * 0.4})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        if (!isBossWarning && currentProblem && currentProblem.y > canvas.height * 0.66) {
+            const dangerLevel = (Math.sin(time * Math.PI / 1000) + 1) / 2;
+            ctx.fillStyle = `rgba(220, 38, 38, ${dangerLevel * 0.3})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (!isEnding) dangerText.style.display = 'block';
+            dangerText.style.opacity = 0.5 + dangerLevel * 0.5;
+        } else { dangerText.style.display = 'none'; }
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update(); particles[i].draw(); if (particles[i].life <= 0) particles.splice(i, 1);
+        }
+        for (let i = monsters.length - 1; i >= 0; i--) {
+            const m = monsters[i]; const isTarget = (m === currentProblem);
+            m.update(deltaTime); m.draw(isTarget);
+            const stopLine = canvas.height - m.radius;
+            if (m.y >= stopLine) {
+                if (m.isBoss) { handleBossAttackCycle(deltaTime); }
+                else { 
+                    // 一般怪物撞到底部時觸發全屏快速震動
+                    triggerMonsterShake();
+                    hp--; monsters.splice(i, 1); updateUI(); 
+                    if (currentProblem === m) currentProblem = null; 
+                }
+                if (hp <= 0 && !isEnding) { triggerEndingEffect(); }
+            }
+        }
+        
+        // 處理快速震動效果
+        const now = performance.now();
+        if (shakeStartTime > 0 && now - shakeStartTime < 500) {
+            const shakeIntensity = Math.sin((now - shakeStartTime) * 0.03) * 8;
+            gameContainer.style.transform = `translateY(${shakeIntensity}px)`;
+        } else if (shakeStartTime > 0) {
+            gameContainer.style.transform = 'translateY(0)';
+            shakeStartTime = 0;
+        }
+        
+        animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function triggerMonsterShake() {
+        if (shakeStartTime === 0) {
+            shakeStartTime = performance.now();
+        }
+    }
+
+    function handleBossAttackCycle(dt) {
+        bossAttackTimer += dt;
+        switch(bossAttackState) {
+            case 'IDLE': bossAttackState = 'PREPARING'; bossAttackTimer = 0; break;
+            case 'PREPARING': if (bossAttackTimer >= 950) { bossAttackState = 'SHAKING'; bossAttackTimer = 0; } break;
+            case 'SHAKING':
+                if (bossAttackTimer < 1500) {
+                    const shakeY = Math.sin(bossAttackTimer * Math.PI / 150) * 15;
+                    gameContainer.style.transform = `translateY(${shakeY}px)`;
+                } else {
+                    gameContainer.style.transform = 'translateY(0)';
+                    bossAttackState = 'WAITING'; bossAttackTimer = 0;
+                }
+                break;
+            case 'WAITING': if (bossAttackTimer >= 300) { hp--; updateUI(); bossAttackState = 'COOLING'; bossAttackTimer = 0; } break;
+            case 'COOLING': if (bossAttackTimer >= 2000) { bossAttackState = 'PREPARING'; bossAttackTimer = 0; } break;
+        }
+    }
+
+    function triggerEndingEffect() {
+        isEnding = true; hp = 0; updateUI();
+        dangerText.style.display = 'none'; gameContainer.style.transform = 'translateY(0)';
+        canvas.classList.add('canvas-dead');
+        setTimeout(() => { endGame(); }, 1500);
+    }
+
+    function endGame() {
+        gameActive = false;
+        // 若成績進入前20名則提示輸入名字
+        let playerName = '玩家';
+        if (score > 0 && (topScores.length < 20 || score > topScores[topScores.length - 1].score)) {
+            playerName = prompt('恭喜進入排行榜！請輸入你的名字：', '玩家');
+            if (!playerName) playerName = '玩家';
+            
+            topScores.push({name: playerName, score: score});
+            topScores.sort((a, b) => b.score - a.score);
+            if (topScores.length > 20) topScores.splice(20);
+            saveTopScores();
+            updateTopScoresUI();
+            const rank = topScores.findIndex(item => item.name === playerName && item.score === score) + 1;
+            showNewHigh(rank);
+        }
+        document.getElementById('final-score').innerText = score;
+        const rankText = getRankText(score);
+        document.getElementById('rank-display').innerText = rankText;
+        gameOverScreen.classList.remove('hidden'); backBtn.classList.add('hidden');
+        speedBtn.classList.add('hidden'); bombBtn.classList.add('hidden');
+        testUi.classList.add('hidden'); gearUi.classList.add('hidden');
+        dangerText.style.display = 'none'; bossWarningText.style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
